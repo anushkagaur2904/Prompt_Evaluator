@@ -1,12 +1,15 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, BackgroundTasks
 from models.schemas import (
     PromptRequest, EvaluationResponse, OptimizationResponse,
-    ModelComparisonResponse, ModelResponse, BehaviorStats, ApiStatusResponse
+    ModelComparisonResponse, ModelResponse, BehaviorStats, ApiStatusResponse,
+    CompareResponse
 )
 from engine.nlp import analyze
 from engine.optimizer import optimize
 from engine.behavior import analyze_behavior
 from engine.llm_api import get_real_llm_responses, get_api_status
+from engine.security import detect_injection
+from db.database import log_interaction
 
 router = APIRouter()
 
@@ -86,4 +89,56 @@ def compare_models(request: PromptRequest):
         models=model_list,
         explanation=explanation,
         recommendation=rec
+    )
+
+@router.post("/compare", response_model=CompareResponse)
+def compare_endpoint(request: PromptRequest, background_tasks: BackgroundTasks):
+    injection_result = detect_injection(request.prompt)
+    is_malicious = injection_result["is_malicious"]
+    reason = injection_result["reason"]
+
+    responses = get_real_llm_responses(request.prompt)
+    
+    final_responses = {}
+    final_scores = {}
+    final_latencies = {}
+    
+    best_model = "Groq"
+    best_score = -1
+
+    for model_name, data in responses.items():
+        response_text = data["text"]
+        latency_ms = data.get("latency_ms", 0)
+        
+        stats, _ = analyze_behavior(model_name, response_text)
+        
+        avg_score = ((stats["verbosity"] + stats["structure"] + stats["creativity"] + stats["safety"]) / 4) * 10
+        
+        final_responses[model_name] = response_text
+        final_scores[model_name] = round(avg_score, 1)
+        final_latencies[model_name] = latency_ms
+
+        length = len(response_text)
+        lat = latency_ms if latency_ms > 0 else 1
+        efficiency_score = (length / lat) * 100
+        if efficiency_score > best_score and data.get("source") == "real":
+            best_score = efficiency_score
+            best_model = model_name
+
+    background_tasks.add_task(
+        log_interaction,
+        prompt=request.prompt,
+        responses=final_responses,
+        scores=final_scores,
+        latency=final_latencies,
+        is_malicious=is_malicious
+    )
+
+    return CompareResponse(
+        is_malicious=is_malicious,
+        reason=reason,
+        responses=final_responses,
+        scores=final_scores,
+        latency=final_latencies,
+        best_model=best_model
     )

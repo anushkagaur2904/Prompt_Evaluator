@@ -13,6 +13,6 @@ export const optimizePrompt = async (prompt) => {
 };
 
 export const compareModels = async (prompt) => {
-  const response = await axios.post(`${API_BASE_URL}/compare-models`, { prompt });
+  const response = await axios.post(`${API_BASE_URL}/compare`, { prompt });
   return response.data;
 };

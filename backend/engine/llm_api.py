@@ -9,13 +9,13 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
 HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY", "")
 
-def _is_valid(key: str, placeholder: str) -> bool:
-    return bool(key) and key != placeholder
+def _is_valid(key: str, prefix: str) -> bool:
+    return bool(key) and key.startswith(prefix)
 
 def _check_status():
     return {
         "Groq":        "connected" if _is_valid(GROQ_API_KEY, "gsk_") else "missing_key",
-        "Gemini":      "connected" if _is_valid(GOOGLE_API_KEY, "your_google_gemini_key_here") else "missing_key",
+        "Gemini":      "connected" if _is_valid(GOOGLE_API_KEY, "AIzaSy") else "missing_key",
         "HuggingFace": "connected" if _is_valid(HUGGINGFACE_API_KEY, "hf_") else "missing_key",
     }
 

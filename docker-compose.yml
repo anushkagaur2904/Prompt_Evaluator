@@ -7,6 +7,16 @@ services:
       - "8000:8000"
     environment:
       - PORT=8000
+      - MONGO_URI=mongodb://mongodb:27017
+    depends_on:
+      - mongodb
+    networks:
+      - prompt-eval-network
+
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
     networks:
       - prompt-eval-network
 

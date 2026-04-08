@@ -50,3 +50,11 @@ class ModelComparisonResponse(BaseModel):
 
 class ApiStatusResponse(BaseModel):
     statuses: Dict[str, str]
+
+class CompareResponse(BaseModel):
+    is_malicious: bool
+    reason: Optional[str] = None
+    responses: Dict[str, str]
+    scores: Dict[str, float]
+    latency: Dict[str, int]
+    best_model: str

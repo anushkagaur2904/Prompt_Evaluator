@@ -6,6 +6,7 @@ import IssuesPanel from './components/IssuesPanel';
 import ComparisonPanel from './components/ComparisonPanel';
 import MultiLLMPanel from './components/MultiLLMPanel';
 import ApiStatusPanel from './components/ApiStatusPanel';
+import { ShieldAlert } from 'lucide-react';
 import { analyzePrompt, optimizePrompt, compareModels } from './api/client';
 
 function App() {
@@ -97,7 +98,18 @@ function App() {
             )}
 
             {comparison && (
-               <MultiLLMPanel comparison={comparison} />
+               <>
+                 {comparison.is_malicious && (
+                   <div className="bg-red-950/40 border-l-4 border-l-red-500 p-4 rounded-r-lg mb-6 flex items-start gap-3">
+                     <ShieldAlert className="text-red-500 mt-1" size={20} />
+                     <div>
+                       <h3 className="text-red-400 font-bold">Warning: Potential Prompt Injection Detected</h3>
+                       <p className="text-red-300 text-sm">{comparison.reason || "This prompt contains patterns associated with jailbreaks or system instruction overrides."}</p>
+                     </div>
+                   </div>
+                 )}
+                 <MultiLLMPanel comparison={comparison} />
+               </>
             )}
           </div>
         )}
