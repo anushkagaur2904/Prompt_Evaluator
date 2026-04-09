@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    build: ./backend
+    image: anushkagaur2904/prompt_evaluator_backend
     ports:
       - "8000:8000"
     environment:
@@ -21,7 +21,7 @@ services:
       - prompt-eval-network
 
   frontend:
-    build: ./frontend
+    image: anushkagaur2904/prompt_evaluator_frontend
     ports:
       - "80:80"
     depends_on:
