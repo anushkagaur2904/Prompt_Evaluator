@@ -2,13 +2,13 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_CREDENTIALS_ID = 'dockerhub-credentials'
-        DOCKER_IMAGE_BACKEND = 'anushka/prompt-evaluator-backend'
-        DOCKER_IMAGE_FRONTEND = 'anushka/prompt-evaluator-frontend'
+        IMAGE_BACKEND = 'prompt-backend'
+        IMAGE_FRONTEND = 'prompt-frontend'
         IMAGE_TAG = "${env.BUILD_NUMBER}"
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 checkout scm
@@ -21,8 +21,8 @@ pipeline {
                     steps {
                         dir('backend') {
                             sh 'python3 -m venv venv'
-                            sh '. venv/bin/activate && pip install -r requirements.txt'
-                            sh '. venv/bin/activate && python3 -c "import fastapi; print(\'Backend dependencies OK\')"'
+                            sh 'venv/bin/pip install -r requirements.txt'
+                            sh 'venv/bin/python -c "import fastapi; print(\'Backend OK\')"'
                         }
                     }
                 }
@@ -30,69 +30,54 @@ pipeline {
                     steps {
                         dir('frontend') {
                             sh 'npm install'
-                            sh 'npm run build || echo "Build completed with warnings"'
+                            sh 'npm run build || echo "Build warnings ignored"'
                         }
                     }
                 }
             }
         }
 
-        stage('Build Docker Images') {
+        stage('Build Docker Images (LOCAL ONLY)') {
             steps {
                 dir('backend') {
-                    sh "docker build -t ${env.DOCKER_IMAGE_BACKEND}:${env.IMAGE_TAG} ."
+                    sh "docker build -t ${IMAGE_BACKEND}:${IMAGE_TAG} ."
                 }
                 dir('frontend') {
-                    sh "docker build -t ${env.DOCKER_IMAGE_FRONTEND}:${env.IMAGE_TAG} ."
+                    sh "docker build -t ${IMAGE_FRONTEND}:${IMAGE_TAG} ."
                 }
             }
         }
 
-        stage('Push Docker Images') {
+        stage('Run Containers Locally') {
             steps {
-                withDockerRegistry([credentialsId: env.DOCKER_CREDENTIALS_ID, url: '']) {
-                    sh "docker push ${env.DOCKER_IMAGE_BACKEND}:${env.IMAGE_TAG}"
-                    sh "docker push ${env.DOCKER_IMAGE_FRONTEND}:${env.IMAGE_TAG}"
-                    // Tag as latest
-                    sh "docker tag ${env.DOCKER_IMAGE_BACKEND}:${env.IMAGE_TAG} ${env.DOCKER_IMAGE_BACKEND}:latest"
-                    sh "docker tag ${env.DOCKER_IMAGE_FRONTEND}:${env.IMAGE_TAG} ${env.DOCKER_IMAGE_FRONTEND}:latest"
-                    sh "docker push ${env.DOCKER_IMAGE_BACKEND}:latest"
-                    sh "docker push ${env.DOCKER_IMAGE_FRONTEND}:latest"
-                }
-            }
-        }
+                sh '''
+                docker stop backend || true
+                docker stop frontend || true
+                docker rm backend || true
+                docker rm frontend || true
 
-        stage('Deploy to Staging') {
-            steps {
-                // Deploying to staging environment
-                sh 'docker-compose -f docker-compose.yml up -d'
-                echo "Deployed to Staging Environment."
-                // Wait for services to be ready
-                sh 'sleep 30'
+                docker run -d -p 8000:8000 --name backend ${IMAGE_BACKEND}:${IMAGE_TAG}
+                docker run -d -p 3000:3000 --name frontend ${IMAGE_FRONTEND}:${IMAGE_TAG}
+                '''
             }
         }
 
         stage('Health Check') {
             steps {
-                // Check if services are healthy
-                sh 'curl -f http://localhost:8000/ || echo "Backend not ready"'
-                sh 'curl -f http://localhost:80/ || echo "Frontend not ready"'
+                sh 'sleep 10'
+                sh 'curl -f http://localhost:8000 || echo "Backend not ready"'
+                sh 'curl -f http://localhost:3000 || echo "Frontend not ready"'
                 sh 'docker ps'
             }
         }
     }
 
     post {
-        always {
-            echo "Cleaning up workspace and containers..."
-            sh 'docker-compose -f docker-compose.yml down || true'
-            cleanWs()
-        }
         success {
-            echo "Pipeline completed successfully!"
+            echo "App running locally 🚀"
         }
         failure {
-            echo "Pipeline failed! Please check the logs."
+            echo "Pipeline failed ❌"
         }
     }
 }
