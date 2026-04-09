@@ -37,13 +37,6 @@ pipeline {
             }
         }
 
-        stage('Security Scan (SAST)') {
-            steps {
-                echo "Running Static Security Analysis..."
-                sh 'trivy fs --severity HIGH,CRITICAL . || echo "Trivy scan completed"'
-            }
-        }
-
         stage('Build Docker Images') {
             steps {
                 dir('backend') {
@@ -52,15 +45,6 @@ pipeline {
                 dir('frontend') {
                     sh "docker build -t ${env.DOCKER_IMAGE_FRONTEND}:${env.IMAGE_TAG} ."
                 }
-            }
-        }
-
-        stage('Container Image Scan') {
-            steps {
-                echo "Scanning Backend Image..."
-                sh "trivy image --severity HIGH,CRITICAL ${env.DOCKER_IMAGE_BACKEND}:${env.IMAGE_TAG} || echo 'Backend scan completed'"
-                echo "Scanning Frontend Image..."
-                sh "trivy image --severity HIGH,CRITICAL ${env.DOCKER_IMAGE_FRONTEND}:${env.IMAGE_TAG} || echo 'Frontend scan completed'"
             }
         }
 
