@@ -1,26 +1,35 @@
 import React, { useState } from 'react';
-import { Sparkles, Terminal } from 'lucide-react';
+import { Sparkles, Terminal, ShieldAlert } from 'lucide-react';
 import InputBox from './components/InputBox';
 import ScorePanel from './components/ScorePanel';
 import IssuesPanel from './components/IssuesPanel';
 import ComparisonPanel from './components/ComparisonPanel';
 import MultiLLMPanel from './components/MultiLLMPanel';
+import ABComparisonPanel from './components/ABComparisonPanel';
+import FeedbackPanel from './components/FeedbackPanel';
+import ABInputBox from './components/ABInputBox';
+import PromptHistoryPanel from './components/PromptHistoryPanel';
 import ApiStatusPanel from './components/ApiStatusPanel';
-import { ShieldAlert } from 'lucide-react';
-import { analyzePrompt, optimizePrompt, compareModels } from './api/client';
+import { analyzePrompt, optimizePrompt, compareModels, abTestPrompts, submitFeedback, getPromptHistory, savePromptVersion } from './api/client';
 
 function App() {
   const [loading, setLoading] = useState(false);
   const [evaluation, setEvaluation] = useState(null);
   const [optimization, setOptimization] = useState(null);
   const [comparison, setComparison] = useState(null);
+  const [abResult, setAbResult] = useState(null);
+  const [feedbackSent, setFeedbackSent] = useState(null);
+  const [currentPrompt, setCurrentPrompt] = useState('');
+  const [promptHistory, setPromptHistory] = useState([]);
 
   const handleAnalyze = async (promptText) => {
     setLoading(true);
     setEvaluation(null);
     setOptimization(null);
     setComparison(null);
+    setPromptHistory([]);
     try {
+      setCurrentPrompt(promptText);
       const evalData = await analyzePrompt(promptText);
       setEvaluation(evalData);
       
@@ -29,11 +38,52 @@ function App() {
       
       const compData = await compareModels(promptText);
       setComparison(compData);
+      const history = await getPromptHistory(promptText);
+      setPromptHistory(history || []);
     } catch (error) {
       console.error("Failed to analyze prompt:", error);
       alert("Failed to connect to the analysis engine. Is the backend running?");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleABTest = async (promptA, promptB, expectedKeywords, expectedFormat, idealLength) => {
+    setLoading(true);
+    setAbResult(null);
+    try {
+      const result = await abTestPrompts(promptA, promptB, expectedKeywords, expectedFormat, idealLength);
+      setAbResult(result);
+    } catch (error) {
+      console.error('Failed to run A/B test:', error);
+      alert('Failed to run A/B comparison. Is the backend running?');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFeedback = async (feedback, score = null, comment = null) => {
+    if (!evaluation) return;
+    try {
+      const result = await submitFeedback(evaluation.original_prompt, feedback, score, comment);
+      setFeedbackSent(result.success ? 'Thanks for your feedback!' : 'Feedback failed to save.');
+    } catch (error) {
+      console.error('Feedback submission failed:', error);
+      alert('Could not submit feedback.');
+    }
+  };
+
+  const handleSaveVersion = async (promptText, version) => {
+    if (!promptText) return;
+    try {
+      const result = await savePromptVersion(promptText, version);
+      if (result.success) {
+        const history = await getPromptHistory(promptText);
+        setPromptHistory(history || []);
+      }
+    } catch (error) {
+      console.error('Failed to save prompt version:', error);
+      alert('Could not save prompt version.');
     }
   };
 
@@ -58,6 +108,7 @@ function App() {
       <div className="grid grid-cols-1 gap-8">
         <ApiStatusPanel />
         <InputBox onAnalyze={handleAnalyze} isLoading={loading} />
+        <ABInputBox onRunABTest={handleABTest} isLoading={loading} />
 
         {loading && (
           <div className="glass rounded-[var(--radius)] py-20 flex flex-col justify-center items-center gap-4 animate-in fade-in">
@@ -109,9 +160,21 @@ function App() {
                    </div>
                  )}
                  <MultiLLMPanel comparison={comparison} />
+                <FeedbackPanel onFeedback={handleFeedback} feedbackSent={feedbackSent} />
                </>
             )}
           </div>
+        )}
+        {abResult && (
+          <ABComparisonPanel abResult={abResult} />
+        )}
+        {promptHistory && promptHistory.length >= 0 && (
+          <PromptHistoryPanel
+            promptHistory={promptHistory}
+            onLoadVersion={(promptText) => handleAnalyze(promptText)}
+            onSaveVersion={handleSaveVersion}
+            currentPrompt={currentPrompt}
+          />
         )}
       </div>
     </div>

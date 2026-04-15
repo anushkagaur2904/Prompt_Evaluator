@@ -1,34 +1,59 @@
 from fastapi import APIRouter, BackgroundTasks
+from typing import Optional
 from models.schemas import (
     PromptRequest, EvaluationResponse, OptimizationResponse,
     ModelComparisonResponse, ModelResponse, BehaviorStats, ApiStatusResponse,
-    CompareResponse
+    CompareResponse, ABTestRequest, ABTestResponse,
+    DatasetEntry, FeedbackRequest
 )
-from engine.nlp import analyze
+from engine.nlp import analyze, evaluate_prompt
+from db.database import log_interaction, save_dataset_entry, list_dataset_entries, save_prompt_version, list_prompt_versions, save_feedback
 from engine.optimizer import optimize
 from engine.behavior import analyze_behavior
 from engine.llm_api import get_real_llm_responses, get_api_status
 from engine.security import detect_injection
-from db.database import log_interaction
 
 router = APIRouter()
 
 @router.post("/analyze", response_model=EvaluationResponse)
 def analyze_prompt(request: PromptRequest):
-    result = analyze(request.prompt)
+    result = evaluate_prompt(
+        request.prompt,
+        expected_keywords=request.expected_keywords,
+        expected_format=request.expected_format,
+        ideal_length=request.ideal_length
+    )
+    regression_detected = False
+    score_change = None
+    if request.previous_score is not None:
+        score_change = round(result["score"] - request.previous_score, 1)
+        regression_detected = result["score"] < request.previous_score
     return EvaluationResponse(
         original_prompt=request.prompt,
         score=result["score"],
         metrics=result["metrics"],
         issues=result["issues"],
-        response_prediction=result.get("response_prediction", {"type": "Unknown", "confidence": 0.0})
+        response_prediction=result.get("response_prediction", {"type": "Unknown", "confidence": 0.0}),
+        regression_detected=regression_detected,
+        previous_score=request.previous_score,
+        score_change=score_change
     )
 
 @router.post("/optimize", response_model=OptimizationResponse)
 def optimize_prompt(request: PromptRequest):
-    analyze_result_before = analyze(request.prompt)
+    analyze_result_before = evaluate_prompt(
+        request.prompt,
+        expected_keywords=request.expected_keywords,
+        expected_format=request.expected_format,
+        ideal_length=request.ideal_length
+    )
     optimized_text, suggestions_data = optimize(request.prompt, analyze_result_before["metrics"])
-    analyze_result_after = analyze(optimized_text)
+    analyze_result_after = evaluate_prompt(
+        optimized_text,
+        expected_keywords=request.expected_keywords,
+        expected_format=request.expected_format,
+        ideal_length=request.ideal_length
+    )
     return OptimizationResponse(
         original_prompt=request.prompt,
         suggestions=suggestions_data,
@@ -91,6 +116,86 @@ def compare_models(request: PromptRequest):
         recommendation=rec
     )
 
+
+@router.post("/ab-test", response_model=ABTestResponse)
+def ab_test(request: ABTestRequest):
+    result_a = evaluate_prompt(
+        request.prompt_a,
+        expected_keywords=request.expected_keywords,
+        expected_format=request.expected_format,
+        ideal_length=request.ideal_length,
+    )
+    result_b = evaluate_prompt(
+        request.prompt_b,
+        expected_keywords=request.expected_keywords,
+        expected_format=request.expected_format,
+        ideal_length=request.ideal_length,
+    )
+
+    winner = "A" if result_a["score"] >= result_b["score"] else "B"
+    regression_detected = result_b["score"] < result_a["score"]
+    message = (
+        f"Prompt {winner} performs better based on deterministic prompt metrics."
+        if winner else "Comparison complete."
+    )
+    return ABTestResponse(
+        prompt_a=request.prompt_a,
+        prompt_b=request.prompt_b,
+        metrics_a=result_a["metrics"],
+        metrics_b=result_b["metrics"],
+        issues_a=result_a["issues"],
+        issues_b=result_b["issues"],
+        score_a=result_a["score"],
+        score_b=result_b["score"],
+        winner=winner,
+        regression_detected=regression_detected,
+        message=message
+    )
+
+
+@router.post("/dataset")
+async def add_dataset_entry(entry: DatasetEntry):
+    success = await save_dataset_entry(
+        prompt=entry.prompt,
+        expected_keywords=entry.expected_keywords,
+        expected_format=entry.expected_format,
+        ideal_length=entry.ideal_length,
+        version=entry.version,
+    )
+    return {"success": success}
+
+
+@router.get("/dataset")
+async def get_dataset_entries():
+    return await list_dataset_entries()
+
+
+@router.post("/prompt-history")
+async def add_prompt_history(entry: DatasetEntry):
+    success = await save_prompt_version(
+        prompt=entry.prompt,
+        version=entry.version or "v1",
+        score=0.0,
+        metrics={},
+    )
+    return {"success": success}
+
+
+@router.get("/prompt-history")
+async def get_prompt_history(prompt: Optional[str] = None):
+    return await list_prompt_versions(prompt)
+
+
+@router.post("/feedback")
+async def add_feedback(feedback: FeedbackRequest):
+    success = await save_feedback(
+        prompt=feedback.prompt,
+        feedback=feedback.feedback,
+        score=feedback.score,
+        comment=feedback.comment,
+    )
+    return {"success": success}
+
 @router.post("/compare", response_model=CompareResponse)
 def compare_endpoint(request: PromptRequest, background_tasks: BackgroundTasks):
     injection_result = detect_injection(request.prompt)
@@ -125,6 +230,13 @@ def compare_endpoint(request: PromptRequest, background_tasks: BackgroundTasks):
             best_score = efficiency_score
             best_model = model_name
 
+    regression_detected = False
+    score_change = None
+    if request.previous_score is not None:
+        average_score = sum(final_scores.values()) / len(final_scores) if final_scores else 0
+        score_change = round(average_score - request.previous_score, 1)
+        regression_detected = average_score < request.previous_score
+
     background_tasks.add_task(
         log_interaction,
         prompt=request.prompt,
@@ -141,4 +253,7 @@ def compare_endpoint(request: PromptRequest, background_tasks: BackgroundTasks):
         scores=final_scores,
         latency=final_latencies,
         best_model=best_model
+        , regression_detected=regression_detected
+        , previous_score=request.previous_score
+        , score_change=score_change
     )
