@@ -66,7 +66,7 @@ pipeline {
                 docker rm frontend || true
 
                 docker run -d -p 8000:8000 --name backend ${IMAGE_BACKEND}:${IMAGE_TAG}
-                docker run -d -p 3000:3000 --name frontend ${IMAGE_FRONTEND}:${IMAGE_TAG}
+                docker run -d -p 3000:80 --name frontend ${IMAGE_FRONTEND}:${IMAGE_TAG}
                 '''
             }
         }
