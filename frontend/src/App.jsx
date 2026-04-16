@@ -9,6 +9,7 @@ import ABComparisonPanel from './components/ABComparisonPanel';
 import FeedbackPanel from './components/FeedbackPanel';
 import ABInputBox from './components/ABInputBox';
 import PromptHistoryPanel from './components/PromptHistoryPanel';
+import DatasetPanel from './components/DatasetPanel';
 import ApiStatusPanel from './components/ApiStatusPanel';
 import { analyzePrompt, optimizePrompt, compareModels, abTestPrompts, submitFeedback, getPromptHistory, savePromptVersion } from './api/client';
 
@@ -160,7 +161,7 @@ function App() {
               </div>
             </div>
 
-            {optimization && optimization.suggestions && optimization.suggestions.length > 0 && (
+            {optimization?.suggestions?.length > 0 && (
               <ComparisonPanel 
                 original={optimization.original_prompt}
                 suggestions={optimization.suggestions}
@@ -187,7 +188,7 @@ function App() {
         {abResult && (
           <ABComparisonPanel abResult={abResult} />
         )}
-        {promptHistory && promptHistory.length >= 0 && (
+        {promptHistory?.length > 0 && (
           <PromptHistoryPanel
             promptHistory={promptHistory}
             onLoadVersion={(promptText) => handleAnalyze(promptText)}
@@ -195,6 +196,7 @@ function App() {
             currentPrompt={currentPrompt}
           />
         )}
+        <DatasetPanel />
       </div>
     </div>
   );

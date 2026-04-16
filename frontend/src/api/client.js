@@ -65,3 +65,8 @@ export const savePromptVersion = async (prompt, version) => {
   });
   return response.data;
 };
+
+export const getDatasetEntries = async () => {
+  const response = await axios.get(`${API_BASE_URL}/dataset`);
+  return response.data;
+};

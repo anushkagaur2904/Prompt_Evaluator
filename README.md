@@ -163,7 +163,7 @@ The repo includes a Jenkinsfile that:
 * ✅ Jenkins pipeline updated for frontend port mapping
 
 ## 9. 📌 Next Steps
-* Add prompt dataset management UI
+* ✅ Add prompt dataset management UI
 * Add regression visualization and trend tracking
 * Extend storage with analytics dashboards
 * Add more robust unit/integration tests
