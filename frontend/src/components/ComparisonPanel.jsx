@@ -16,14 +16,21 @@ export default function ComparisonPanel({ original, suggestions }) {
     <div className="glass rounded-[var(--radius)] p-6 space-y-6">
       <h2 className="text-xl font-bold gradient-text">Advanced Prompt Optimization</h2>
 
-      {/* Domain + Intent Detection Banner */}
-      {(activeSuggestion.domain || activeSuggestion.intent) && (
+      {/* Domain + Intent + Template Detection Banner */}
+      {(activeSuggestion.domain || activeSuggestion.intent || activeSuggestion.template) && (
         <div className="flex flex-wrap gap-3">
           {activeSuggestion.intent && (
             <div className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-full px-4 py-1.5 text-sm">
               <Lightbulb size={14} className="text-blue-400" />
               <span className="text-zinc-400">Intent:</span>
               <span className="font-semibold text-blue-300">{activeSuggestion.intent}</span>
+            </div>
+          )}
+          {activeSuggestion.template && (
+            <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-full px-4 py-1.5 text-sm">
+              <CheckCircle2 size={14} className="text-green-400" />
+              <span className="text-zinc-400">Template:</span>
+              <span className="font-semibold text-green-300">{activeSuggestion.template}</span>
             </div>
           )}
           {activeSuggestion.domain && (

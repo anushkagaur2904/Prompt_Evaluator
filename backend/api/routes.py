@@ -8,7 +8,7 @@ from models.schemas import (
 )
 from engine.nlp import analyze, evaluate_prompt
 from db.database import log_interaction, save_dataset_entry, list_dataset_entries, save_prompt_version, list_prompt_versions, save_feedback
-from engine.optimizer import optimize
+from engine.optimizer import detect_intent, get_template_name
 from engine.behavior import analyze_behavior
 from engine.llm_api import get_real_llm_responses, get_api_status
 from engine.security import detect_injection
@@ -28,6 +28,10 @@ def analyze_prompt(request: PromptRequest):
     if request.previous_score is not None:
         score_change = round(result["score"] - request.previous_score, 1)
         regression_detected = result["score"] < request.previous_score
+    
+    intent = detect_intent(request.prompt)
+    template = get_template_name(intent)
+    
     return EvaluationResponse(
         original_prompt=request.prompt,
         score=result["score"],
@@ -36,7 +40,9 @@ def analyze_prompt(request: PromptRequest):
         response_prediction=result.get("response_prediction", {"type": "Unknown", "confidence": 0.0}),
         regression_detected=regression_detected,
         previous_score=request.previous_score,
-        score_change=score_change
+        score_change=score_change,
+        intent=intent,
+        template=template
     )
 
 @router.post("/optimize", response_model=OptimizationResponse)
@@ -47,7 +53,7 @@ def optimize_prompt(request: PromptRequest):
         expected_format=request.expected_format,
         ideal_length=request.ideal_length
     )
-    optimized_text, suggestions_data = optimize(request.prompt, analyze_result_before["metrics"])
+    optimized_text, suggestions_data = optimize(request.prompt)
     analyze_result_after = evaluate_prompt(
         optimized_text,
         expected_keywords=request.expected_keywords,

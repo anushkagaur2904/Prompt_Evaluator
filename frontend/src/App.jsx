@@ -125,7 +125,26 @@ function App() {
               <IssuesPanel issues={evaluation.issues} />
               
               <div className="glass rounded-[var(--radius)] p-6 border-l-4 border-l-blue-500/50">
-                <h2 className="text-xl font-bold text-zinc-100 mb-4">Response Prediction</h2>
+                <h2 className="text-xl font-bold text-zinc-100 mb-4">Analysis Insights</h2>
+                
+                {/* Intent and Template Badges */}
+                {(evaluation.intent || evaluation.template) && (
+                  <div className="flex flex-wrap gap-3 mb-4">
+                    {evaluation.intent && (
+                      <div className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-full px-4 py-1.5 text-sm">
+                        <span className="text-zinc-400">Intent:</span>
+                        <span className="font-semibold text-blue-300">{evaluation.intent}</span>
+                      </div>
+                    )}
+                    {evaluation.template && (
+                      <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-full px-4 py-1.5 text-sm">
+                        <span className="text-zinc-400">Template:</span>
+                        <span className="font-semibold text-green-300">{evaluation.template}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
                 <div className="bg-zinc-900/50 rounded-lg p-5 border border-zinc-800 flex justify-between items-center h-28">
                   <div>
                     <div className="text-xs font-bold text-zinc-500 uppercase tracking-wide mb-2">Likely Form</div>

@@ -18,6 +18,8 @@ class EvaluationResponse(BaseModel):
     regression_detected: Optional[bool] = False
     previous_score: Optional[float] = None
     score_change: Optional[float] = None
+    intent: Optional[str] = None
+    template: Optional[str] = None
 
 class Suggestion(BaseModel):
     name: str
@@ -25,6 +27,7 @@ class Suggestion(BaseModel):
     transformation_steps: List[str]
     domain: Optional[str] = None
     intent: Optional[str] = None
+    template: Optional[str] = None
 
 class OptimizationResponse(BaseModel):
     original_prompt: str

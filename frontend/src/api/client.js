@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = 'http://localhost:8001/api';
 
 export const analyzePrompt = async (prompt) => {
   const response = await axios.post(`${API_BASE_URL}/analyze`, { prompt });

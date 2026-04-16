@@ -1,36 +1,32 @@
 # Prompt Evaluation & Experimentation System
-# Prompt Evaluation & Experimentation System
 
 ## Quick Start
 Start the backend and frontend locally with these commands:
 
 ```bash
+# Backend
 cd backend
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
+source ../.venv/bin/activate  # or create venv and install requirements
+PYTHONPATH=/Users/anushka/Prompt_Evaluator/backend uvicorn main:app --host 0.0.0.0 --port 8001
 
-In another terminal:
-
-```bash
+# Frontend (in another terminal)
 cd frontend
 npm install
 npm run dev
 ```
 
-Then open the frontend at `http://localhost:5173` and backend at `http://localhost:8000`.
+Then open the frontend at `http://localhost:5173` and backend at `http://localhost:8001`.
 
 ## 1. 🎯 Executive Summary
-This repository implements a practical prompt evaluation and experimentation system with a FastAPI backend and a React frontend.
+This repository implements an **Intent-Aware Prompt Optimization Engine** with a FastAPI backend and a React frontend.
 
-The platform evaluates prompt quality using deterministic metrics, compares outputs across models, supports A/B prompt testing, stores prompt versions, and captures user feedback.
+The platform evaluates prompt quality using deterministic metrics, detects user intent, applies appropriate templates, compares outputs across models, supports A/B prompt testing, stores prompt versions, and captures user feedback.
 
 ## 2. 🧠 What the System Does
 The system provides:
+* **Intent-Aware Prompt Optimization**: Detects user intent (Creation, Coding, Question, Explanation, General) and applies appropriate templates
 * Prompt evaluation with deterministic scoring
-* Prompt optimization suggestions
+* Prompt optimization suggestions with transformation steps
 * Multi-model response comparison
 * A/B prompt testing
 * Prompt history and version tracking
@@ -38,6 +34,12 @@ The system provides:
 * Prompt injection detection and regression alerts
 
 ## 3. 🚀 Key Features
+
+### 🔹 Intent Detection & Template Mapping
+* **Intent Types**: Creation, Coding, Question, Explanation, Comparison, General
+* **Template Mapping**: Creation → Build/System Design, Coding → Code Template, Question → Answer Template, etc.
+* **Context Preservation**: Clean reconstruction without breaking grammar
+* **UI Display**: Shows detected intent and applied template in both analysis and optimization panels
 
 ### 🔹 Deterministic Prompt Metrics
 * Keyword relevance matching
@@ -69,6 +71,15 @@ The system provides:
 * Prompt injection detection
 * Safe fallback to mock model responses when API keys are missing
 
+### 🔹 Test Cases
+| Input Prompt | Detected Intent | Applied Template | Output Example |
+|-------------|----------------|------------------|----------------|
+| "build a spotify music app for me" | Creation | Build/System Design | "Design a Spotify-like music streaming application..." |
+| "explain AI" | Explanation | Explanation | "Explain AI with simple terms and examples..." |
+| "write code for binary search" | Coding | Code Template | "Write clean, well-commented code for binary search..." |
+| "what is machine learning?" | Question | Answer Template | "Answer the question: what is machine learning?..." |
+| "compare python and java" | Comparison | Comparison Template | "Compare Python and Java concisely using a table..." |
+
 ## 4. 🧩 Architecture
 * **Backend:** FastAPI, deterministic prompt evaluation, MongoDB storage helpers
 * **Frontend:** React, Vite, modern UI components
@@ -83,7 +94,7 @@ cd backend
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uvicorn main:app --reload --host 0.0.0.0 --port 8001
 ```
 
 ### Local Frontend
@@ -144,8 +155,9 @@ The repo includes a Jenkinsfile that:
 * updated Docker and Jenkins support for the current repo
 
 ## 8. 🧠 Current Status
-* ✅ Backend available on `http://localhost:8000`
-* ✅ Frontend build passes with Vite
+* ✅ Backend available on `http://localhost:8001`
+* ✅ Frontend available on `http://localhost:5173`
+* ✅ Intent and template detection working in both analysis and optimization
 * ✅ New UI components for A/B testing and prompt history
 * ✅ Feedback capture is implemented
 * ✅ Jenkins pipeline updated for frontend port mapping
