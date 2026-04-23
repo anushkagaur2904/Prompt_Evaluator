@@ -1,5 +1,4 @@
 # Prompt Evaluation & Experimentation System
-# Prompt Evaluation & Experimentation System
 
 ## Quick Start
 Start the backend and frontend locally with these commands:
