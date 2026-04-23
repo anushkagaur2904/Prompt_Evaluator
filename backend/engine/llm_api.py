@@ -9,8 +9,11 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
 HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY", "")
 
+#def _is_valid(key: str, prefix: str) -> bool:
+#    return bool(key) and key.startswith(prefix)
+
 def _is_valid(key: str, prefix: str) -> bool:
-    return bool(key) and key.startswith(prefix)
+    return bool(key and key.strip())
 
 def _check_status():
     return {
