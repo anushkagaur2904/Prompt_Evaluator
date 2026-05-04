@@ -131,11 +131,9 @@ def get_real_llm_responses(prompt: str):
     def final_score(model):
         score = results[model]["score"]
         latency = results[model]["latency_ms"]
-        return score - (latency * 0.0005)
 
-    best_model = max(results, key=final_score)
+        # Avoid division by zero
+        latency_factor = 1 / (latency + 1)
 
-    return {
-        "results": results,
-        "best_model": best_model
-    }
+        # 90% importance to quality, 10% to latency
+        return (score * 0.9) + (latency_factor * 10 * 0.1)
