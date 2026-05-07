@@ -1,174 +1,352 @@
 import re
-try:
-    import textstat
-except ImportError:
-    textstat = None
 
 
-def calculate_clarity(text):
-    if not text:
-        return 0.0
-    grammar_errors = len(re.findall(r"\b(is am|are is|does not has|their is)\b", text, re.IGNORECASE))
-    if textstat:
-        try:
-            readability = textstat.flesch_reading_ease(text)
-            r_norm = max(0, min(100, readability)) / 100.0
-        except Exception:
-            r_norm = 0.5
-    else:
-        r_norm = 0.5
-    return (1 / (1 + grammar_errors)) * r_norm
+# ─────────────────────────────────────────────
+# INTENT DETECTION
+# ─────────────────────────────────────────────
+def detect_intent(prompt: str):
+
+    p = prompt.lower()
+
+    if any(k in p for k in [
+        "explain",
+        "define",
+        "describe",
+        "teach",
+        "what is"
+    ]):
+        return "explanation"
+
+    if any(k in p for k in [
+        "write",
+        "generate",
+        "create",
+        "draft"
+    ]):
+
+        if "email" in p:
+            return "email"
+
+        if "code" in p:
+            return "code"
+
+        if "essay" in p:
+            return "essay"
+
+        return "generation"
+
+    if any(k in p for k in [
+        "compare",
+        "difference",
+        "vs"
+    ]):
+        return "comparison"
+
+    if any(k in p for k in [
+        "summarize",
+        "summary"
+    ]):
+        return "summary"
+
+    return "general"
 
 
-def calculate_specificity(text):
-    words = text.split()
-    total_words = len(words)
-    if total_words == 0:
-        return 0.0
-    domain_keywords = [
-        "ai", "api", "python", "javascript", "code", "database", "sql", "explain",
-        "analyze", "evaluate", "optimize", "system", "architecture", "data"
+# ─────────────────────────────────────────────
+# MAIN PROMPT EVALUATION
+# ─────────────────────────────────────────────
+def evaluate_prompt(prompt: str):
+
+    words = prompt.split()
+    length = len(words)
+
+    prompt_lower = prompt.lower()
+
+    # ───────── CLARITY
+    clarity = 0.7
+
+    if length >= 8:
+        clarity += 0.1
+
+    if any(x in prompt_lower for x in [
+        "explain",
+        "write",
+        "generate",
+        "create",
+        "summarize",
+        "compare"
+    ]):
+        clarity += 0.1
+
+    if "," in prompt or "." in prompt:
+        clarity += 0.1
+
+    clarity = min(1.0, clarity)
+
+    # ───────── SPECIFICITY
+
+    specificity_terms = [
+        w for w in words
+        if len(w) > 6
+        ]
+
+    constraint_terms = [
+        "bullet",
+        "steps",
+        "json",
+        "table",
+        "formal",
+        "technical",
+        "examples",
+        "simple",
+        "detailed",
+        "professional"
     ]
-    matched = sum(1 for w in words if w.lower() in domain_keywords)
-    return min(1.0, (matched / total_words) * 3)
 
-
-def calculate_context(text):
-    words = len(text.split())
-    if words < 5:
-        return 0.2
-    if words < 15:
-        return 0.5
-    if words < 30:
-        return 0.8
-    return 1.0
-
-
-def calculate_instruction(text):
-    action_verbs = [
-        "write", "explain", "create", "build", "analyze", "evaluate", "summarize", "list", "describe", "show"
-    ]
-    matched = sum(1 for v in action_verbs if v in text.lower())
-    return min(1.0, matched / 2.0)
-
-
-def calculate_ambiguity(text):
-    ambig = ["stuff", "things", "something", "sometimes", "maybe", "probably"]
-    words = text.split()
-    if not words:
-        return 0.0
-    matched = sum(1 for w in words if w.lower() in ambig)
-    return min(1.0, matched / len(words))
-
-
-def calculate_keyword_relevance(text, expected_keywords):
-    if not expected_keywords:
-        return 1.0
-    normalized = [w.strip('.,!?').lower() for w in text.split()]
-    matched = sum(
-        1 for kw in expected_keywords
-        if kw and (kw.lower() in normalized or kw.lower() in text.lower())
+    constraint_bonus = sum(
+        1 for t in constraint_terms
+        if t in prompt_lower
     )
-    return min(1.0, matched / len(expected_keywords))
 
+    specificity = (
+        (len(specificity_terms) * 0.08) +
+        (constraint_bonus * 0.12)
+    )
 
-def validate_format(text, expected_format):
-    if not expected_format:
-        return True
-    lower_text = text.lower()
-    if expected_format == 'bullet':
-        return bool(re.search(r'^[\s\-\*]\s+', text, re.MULTILINE)) or '-' in text or '*' in text
-    if expected_format == 'json':
-        try:
-            import json
-            parsed = json.loads(text)
-            return isinstance(parsed, (dict, list))
-        except Exception:
-            return False
-    return expected_format.lower() in lower_text
+    # short prompts should not get huge specificity
+    if length < 6:
+        specificity *= 0.5
 
+    specificity = min(1.0, max(0.2, specificity))
 
-def calculate_conciseness(text, ideal_length=100):
-    actual = max(1, len(text.split()))
-    ratio = ideal_length / actual
-    if ratio >= 1.0:
-        return min(1.0, 0.7 + ratio * 0.3)
-    return max(0.0, 1.0 - (actual - ideal_length) / (ideal_length * 0.75))
-
-
-def calculate_similarity(text_a, text_b):
-    words_a = set(w.strip('.,!?').lower() for w in text_a.split())
-    words_b = set(w.strip('.,!?').lower() for w in text_b.split())
-    if not words_a or not words_b:
-        return 0.0
-    intersection = words_a.intersection(words_b)
-    union = words_a.union(words_b)
-    return len(intersection) / len(union)
-
-
-def calculate_overall_score(c, s, k, u, a, keyword_relevance=1.0, format_valid=True, conciseness=1.0):
-    w1, w2, w3, w4, w5 = 0.25, 0.20, 0.20, 0.20, -0.15
-    w6, w7, w8 = 0.15, 0.15, 0.15
-    score = (w1 * c) + (w2 * s) + (w3 * k) + (w4 * u) + (w5 * a)
-    score += w6 * keyword_relevance
-    score += w7 * (1.0 if format_valid else 0.0)
-    score += w8 * conciseness
-    max_possible = 1.4
-    final_score = max(0.0, min(10.0, (score / max_possible) * 10))
-    return final_score
-
-
-def analyze(prompt: str):
-    return evaluate_prompt(prompt)
-
-
-def evaluate_prompt(prompt: str, expected_keywords=None, expected_format=None, ideal_length=100):
-    c = calculate_clarity(prompt)
-    s = calculate_specificity(prompt)
-    k = calculate_context(prompt)
-    u = calculate_instruction(prompt)
-    a = calculate_ambiguity(prompt)
-    keyword_relevance = calculate_keyword_relevance(prompt, expected_keywords or [])
-    format_valid = validate_format(prompt, expected_format)
-    conciseness = calculate_conciseness(prompt, ideal_length)
-    score = calculate_overall_score(c, s, k, u, a, keyword_relevance, format_valid, conciseness)
     
+
+    # ───────── CONTEXT
+    context = 0.5
+
+    context_keywords = [
+        "because",
+        "for",
+        "due to",
+        "using",
+        "with",
+        "including",
+        "regarding",
+        "about"
+    ]
+
+    if any(k in prompt_lower for k in context_keywords):
+        context += 0.3
+
+    if length > 15:
+        context += 0.2
+
+    context = min(1.0, context)
+
+    # ───────── INSTRUCTION QUALITY
+    instruction = 0.5
+
+    instruction_keywords = [
+        "explain",
+        "write",
+        "generate",
+        "analyze",
+        "compare",
+        "summarize",
+        "list",
+        "describe"
+    ]
+
+    if any(v in prompt_lower for v in instruction_keywords):
+        instruction += 0.4
+
+    formatting_words = [
+        "bullet",
+        "steps",
+        "table",
+        "json",
+        "format"
+    ]
+
+    if any(v in prompt_lower for v in formatting_words):
+        instruction += 0.1
+
+    instruction = min(1.0, instruction)
+
+    # ───────── AMBIGUITY
+
+    ambiguity = 0.0
+
+    vague_words = [
+        "thing",
+        "stuff",
+        "something",
+        "anything",
+        "whatever",
+        "etc",
+        "and more"
+    ]
+
+    vague_count = sum(
+        1 for w in vague_words
+        if w in prompt_lower
+    )
+
+    ambiguity += vague_count * 0.15
+
+    # vague / underspecified short prompts
+    if length <= 3:
+        ambiguity += 0.35
+
+    elif length <= 6:
+        ambiguity += 0.2
+
+    # missing constraints
+    constraint_words = [
+        "steps",
+        "examples",
+        "bullet",
+        "table",
+        "json",
+        "beginner",
+        "advanced",
+        "professional",
+        "short",
+        "detailed",
+    ]
+
+    if not any(w in prompt_lower for w in constraint_words):
+        ambiguity += 0.15
+
+    ambiguity = min(1.0, round(ambiguity, 2))
+
+    # ───────── KEYWORD RELEVANCE
+    important_words = [
+        w.lower()
+        for w in words
+        if len(w) > 4
+    ]
+
+    unique_ratio = len(set(important_words)) / max(len(important_words), 1)
+
+    keyword_relevance = min(1.0, unique_ratio)
+
+    # ───────── FORMAT VALIDITY
+    format_valid = 0.7
+
+    if any(x in prompt_lower for x in [
+        "bullet",
+        "json",
+        "steps",
+        "table",
+        "paragraph"
+    ]):
+        format_valid = 1.0
+
+    # ───────── CONCISENESS
+    conciseness = 1.0
+
+    if length > 120:
+        conciseness = 0.7
+
+    if length > 250:
+        conciseness = 0.5
+
+    # ─────────────────────────────────────────
+    # FINAL SCORES
+    # ─────────────────────────────────────────
+    scores = {
+        "clarity": round(clarity, 2),
+        "specificity": round(specificity, 2),
+        "context": round(context, 2),
+        "instruction": round(instruction, 2),
+        "ambiguity": round(ambiguity, 2),
+        "keyword_relevance": round(keyword_relevance, 2),
+        "format_valid": round(format_valid, 2),
+        "conciseness": round(conciseness, 2)
+    }
+
+    final_score = (
+        clarity * 0.18 +
+        specificity * 0.18 +
+        context * 0.16 +
+        instruction * 0.18 +
+        keyword_relevance * 0.08 +
+        format_valid * 0.12 +
+        conciseness * 0.08 -
+        ambiguity * 0.25
+    )
+
+    final_score = max(0, min(10, round(final_score * 10, 1)))
+
+    return final_score, scores
+
+
+# ─────────────────────────────────────────────
+# ISSUE DETECTION
+# ─────────────────────────────────────────────
+def detect_issues(prompt: str, scores: dict):
+
     issues = []
-    if c < 0.4:
-        issues.append("Low clarity. Try shortening sentences or simplifying language.")
-    if s < 0.3:
-        issues.append("Too vague. Add domain-specific keywords.")
-    if k < 0.4:
-        issues.append("Missing context. Provide more background details.")
-    if u < 0.5:
-        issues.append("Unclear instructions. Start with action verbs (e.g., 'Evaluate').")
-    if a > 0.1:
-        issues.append("High ambiguity. Remove vague words ('stuff', 'things').")
-    if expected_keywords and keyword_relevance < 0.7:
-        issues.append("Response may miss expected topic keywords.")
-    if expected_format and not format_valid:
-        issues.append(f"Expected format '{expected_format}' not satisfied.")
-    if conciseness < 0.4:
-        issues.append("Response is too verbose relative to the ideal length.")
-    
-    if len(issues) == 0 and score < 9:
-        issues.append("Prompt is good but lacks structural constraints (e.g., word limit).")
-    
+
+    if scores["instruction"] < 0.6:
+        issues.append(
+            "Instruction could be clearer about expected output."
+        )
+
+    if scores["context"] < 0.5:
+        issues.append(
+            "Add more context or background details."
+        )
+
+    if scores["specificity"] < 0.45:
+        issues.append(
+            "Use more specific keywords or constraints."
+        )
+
+    if scores["clarity"] < 0.6:
+        issues.append(
+            "Simplify or restructure the wording."
+        )
+
+    if scores["ambiguity"] > 0.3:
+        issues.append(
+            "Prompt contains vague or ambiguous wording."
+        )
+
+    if not issues:
+        issues.append(
+            "Prompt is well-structured with good clarity."
+        )
+
+    return issues
+
+
+# ─────────────────────────────────────────────
+# MAIN ANALYZE FUNCTION
+# ─────────────────────────────────────────────
+def analyze(prompt: str):
+
+    score, scores = evaluate_prompt(prompt)
+
+    issues = detect_issues(prompt, scores)
+
+    intent = detect_intent(prompt)
+
+    prediction = "Excellent"
+
+    if score < 8:
+        prediction = "Good"
+
+    if score < 6:
+        prediction = "Average"
+
+    if score < 4:
+        prediction = "Weak"
+
     return {
-        "score": round(score, 1),
-        "metrics": {
-            "clarity": round(c, 2),
-            "specificity": round(s, 2),
-            "context": round(k, 2),
-            "instruction": round(u, 2),
-            "ambiguity": round(a, 2),
-            "keyword_relevance": round(keyword_relevance, 2),
-            "format_valid": 1.0 if format_valid else 0.0,
-            "conciseness": round(conciseness, 2),
-        },
+        "score": score,
+        "metrics": scores,
         "issues": issues,
-        "response_prediction": {
-            "type": "Code" if "code" in prompt.lower() or "function" in prompt.lower() else "Explanation",
-            "confidence": 0.85
-        }
+        "intent": intent,
+        "prediction": prediction
     }

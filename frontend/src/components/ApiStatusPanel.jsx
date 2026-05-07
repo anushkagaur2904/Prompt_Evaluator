@@ -19,7 +19,8 @@ export default function ApiStatusPanel() {
 
   useEffect(() => {
     axios.get('http://localhost:8000/api/api-status')
-      .then(r => setStatuses(r.data.statuses))
+      //.then(r => setStatuses(r.data.statuses))
+      .then(r => setStatuses(r.data))
       .catch(() => setStatuses(null))
       .finally(() => setLoading(false));
   }, []);

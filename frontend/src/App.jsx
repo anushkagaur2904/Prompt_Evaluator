@@ -32,22 +32,19 @@ function App() {
   const [currentPrompt, setCurrentPrompt] = useState('');
   const [promptHistory, setPromptHistory] = useState([]);
 
-  // 🌙 THEME STATE
+  // 🌙 THEME
   const [theme, setTheme] = useState("dark");
 
-  // Apply theme to body
   useEffect(() => {
     document.body.classList.remove("light", "dark");
     document.body.classList.add(theme);
   }, [theme]);
 
-  // Load saved theme
   useEffect(() => {
     const saved = localStorage.getItem("theme");
     if (saved) setTheme(saved);
   }, []);
 
-  // Save theme
   useEffect(() => {
     localStorage.setItem("theme", theme);
   }, [theme]);
@@ -56,7 +53,21 @@ function App() {
     setTheme(theme === "dark" ? "light" : "dark");
   };
 
-  // ---------------- API FUNCTIONS ----------------
+  // 🎯 Prediction color helper
+  const getPredictionColor = (label) => {
+    switch (label) {
+      case "Excellent":
+        return "text-green-400";
+      case "Good":
+        return "text-blue-400";
+      case "Average":
+        return "text-yellow-400";
+      default:
+        return "text-red-400";
+    }
+  };
+
+  // ---------------- API ----------------
 
   const handleAnalyze = async (promptText) => {
     setLoading(true);
@@ -78,7 +89,8 @@ function App() {
       setComparison(compData);
 
       const history = await getPromptHistory(promptText);
-      setPromptHistory(history || []);
+      //setPromptHistory(history || []);
+      setPromptHistory(history.history || []);
     } catch (error) {
       console.error(error);
       alert("Backend not running!");
@@ -100,7 +112,7 @@ function App() {
         idealLength
       );
       setAbResult(result);
-    } catch (error) {
+    } catch {
       alert("A/B test failed");
     } finally {
       setLoading(false);
@@ -206,23 +218,44 @@ function App() {
         {!loading && evaluation && (
           <div className="space-y-8">
 
+            {/* SCORE */}
             <ScorePanel score={evaluation.score} metrics={evaluation.metrics} />
 
+            {/* ISSUES + PREDICTION */}
             <div className="grid md:grid-cols-2 gap-8">
+
               <IssuesPanel issues={evaluation.issues} />
 
+              {/* ✅ FIXED PREDICTION */}
               <div className="p-6 border-l-4 border-blue-500">
                 <h2 className="text-xl font-bold mb-4">Prediction</h2>
 
-                <div className="p-5 flex justify-between">
-                  <div>{evaluation.response_prediction.type}</div>
-                  <div>
-                    {Math.round(evaluation.response_prediction.confidence * 100)}%
-                  </div>
-                </div>
+                {(() => {
+                  const prediction =
+                    evaluation.prediction ||
+                    evaluation.response_prediction ||
+                    {};
+
+                  const label = prediction.label || prediction.type || "Unknown";
+                  const confidence = prediction.confidence || 0;
+
+                  return (
+                    <div className="p-5 flex justify-between items-center">
+                      <div className={`text-lg font-semibold ${getPredictionColor(label)}`}>
+                        {label}
+                      </div>
+
+                      <div className="text-sm text-gray-400">
+                        {confidence}%
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
+
             </div>
 
+            {/* OPTIMIZATION */}
             {optimization && (
               <ComparisonPanel
                 original={optimization.original_prompt}
@@ -230,19 +263,25 @@ function App() {
               />
             )}
 
+            {/* MODEL COMPARISON */}
             {comparison && (
               <>
                 {comparison.is_malicious && (
-                  <div className="border-l-4 border-red-500 p-4">
+                  <div className="border-l-4 border-red-500 p-4 flex gap-2">
                     <ShieldAlert />
                     <p>{comparison.reason}</p>
                   </div>
                 )}
 
                 <MultiLLMPanel comparison={comparison} />
-                <FeedbackPanel onFeedback={handleFeedback} feedbackSent={feedbackSent} />
+
+                <FeedbackPanel
+                  onFeedback={handleFeedback}
+                  feedbackSent={feedbackSent}
+                />
               </>
             )}
+
           </div>
         )}
 

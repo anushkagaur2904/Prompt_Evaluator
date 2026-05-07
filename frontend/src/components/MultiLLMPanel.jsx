@@ -56,9 +56,15 @@ export default function MultiLLMPanel({ comparison }) {
             </thead>
             <tbody>
               {models.map((modelName, idx) => {
-                const latency = comparison.latency[modelName];
-                const score = comparison.scores[modelName];
-                const text = comparison.responses[modelName];
+                //const latency = comparison.latency[modelName];
+                //const score = comparison.scores[modelName];
+                //const text = comparison.responses[modelName];
+
+                const modelData = comparison.responses[modelName] || {};
+
+                const latency = modelData.latency_ms || 0;
+                const score = modelData.score || 0;
+                const text = modelData.text || "No response";
                 const indicator = getLatencyIndicator(latency);
 
                 return (
@@ -107,7 +113,13 @@ export default function MultiLLMPanel({ comparison }) {
             Response Time Visualization
          </h3>
          <p className="text-sm text-zinc-400 mb-4">Comparison of model inference latency in milliseconds.</p>
-         <LatencyChart latencyData={comparison.latency} />
+         <LatencyChart latencyData=
+         {Object.fromEntries(
+          Object.entries(comparison.responses || {}). map(
+            ([name, data]) => [name, data.latency_ms || 0]
+          )
+         )
+         } />
       </div>
 
     </div>

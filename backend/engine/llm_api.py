@@ -1,7 +1,6 @@
 import os
-from dotenv import load_dotenv
 import time
-import requests
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -9,131 +8,294 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
 HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY", "")
 
-#def _is_valid(key: str, prefix: str) -> bool:
-#    return bool(key) and key.startswith(prefix)
 
-def _is_valid(key: str, prefix: str) -> bool:
-    return bool(key and key.strip())
-
-def _check_status():
+# ─────────────────────────────────────────────
+# API STATUS
+# ─────────────────────────────────────────────
+def get_api_status():
     return {
-        "Groq":        "connected" if _is_valid(GROQ_API_KEY, "gsk_") else "missing_key",
-        "Gemini":      "connected" if _is_valid(GOOGLE_API_KEY, "AIzaSy") else "missing_key",
-        "HuggingFace": "connected" if _is_valid(HUGGINGFACE_API_KEY, "hf_") else "missing_key",
+        "Groq": "connected" if GROQ_API_KEY else "missing_key",
+        "Gemini": "connected" if GOOGLE_API_KEY else "missing_key",
+        "HuggingFace": "connected" if HUGGINGFACE_API_KEY else "missing_key",
     }
 
-def get_api_status():
-    return _check_status()
 
-# ─── Groq ────────────────────────────────────────────────────────────────────
-def _call_groq(prompt: str):
+# ─────────────────────────────────────────────
+# GROQ
+# ─────────────────────────────────────────────
+def _call_groq(prompt):
     from groq import Groq
+
     client = Groq(api_key=GROQ_API_KEY)
+
     start = time.time()
+
     resp = client.chat.completions.create(
         model="llama-3.1-8b-instant",
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=300
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        temperature=0.7,
+        max_tokens=400
     )
-    latency_ms = round((time.time() - start) * 1000)
-    return resp.choices[0].message.content.strip(), latency_ms
 
-# ─── Gemini ──────────────────────────────────────────────────────────────────
-def _call_gemini(prompt: str):
-    from google import genai
-    client = genai.Client(api_key=GOOGLE_API_KEY)
+    latency = int((time.time() - start) * 1000)
+
+    text = resp.choices[0].message.content.strip()
+
+    return text, latency
+
+
+# ─────────────────────────────────────────────
+# GEMINI
+# ─────────────────────────────────────────────
+def _call_gemini(prompt):
+
+    import google.generativeai as genai
+
+    genai.configure(api_key=GOOGLE_API_KEY)
+
+    model = genai.GenerativeModel("gemini-flash-latest")
+
     start = time.time()
-    resp = client.models.generate_content(
-        model='gemini-2.5-flash',
-        contents=prompt
-    )
-    latency_ms = round((time.time() - start) * 1000)
-    return resp.text.strip(), latency_ms
 
-# ─── Hugging Face Inference API (huggingface_hub) ─────────────────────────────
-def _call_huggingface(prompt: str):
+    response = model.generate_content(prompt)
+
+    latency = int((time.time() - start) * 1000)
+
+    try:
+        text = response.text.strip()
+
+    except:
+        try:
+            text = response.candidates[0].content.parts[0].text.strip()
+        except:
+            text = "Unable to generate response."
+
+    return text, latency
+
+
+# ─────────────────────────────────────────────
+# HUGGINGFACE
+# ─────────────────────────────────────────────
+def _call_hf(prompt):
     from huggingface_hub import InferenceClient
+
     client = InferenceClient(api_key=HUGGINGFACE_API_KEY)
+
     start = time.time()
+
     resp = client.chat_completion(
         model="Qwen/Qwen2.5-7B-Instruct",
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=300
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        max_tokens=400,
+        temperature=0.7
     )
-    latency_ms = round((time.time() - start) * 1000)
-    return resp.choices[0].message.content.strip(), latency_ms
 
-def evaluate_response(text: str):
-    """
-    Simple heuristic scoring (0–10)
-    """
+    latency = int((time.time() - start) * 1000)
+
+    text = resp.choices[0].message.content.strip()
+
+    return text, latency
+
+
+# ─────────────────────────────────────────────
+# RESPONSE QUALITY SCORING
+# ─────────────────────────────────────────────
+def evaluate_response(text: str, prompt: str = ""):
+
+    if not text:
+        return 2
+
+    lower = text.lower()
+
+    # ───────────────── ERRORS
+    error_patterns = [
+        "error generating",
+        "quota",
+        "rate limit",
+        "api key",
+        "failed",
+        "cannot assist",
+        "unable to",
+        "no module named",
+    ]
+
+    if any(p in lower for p in error_patterns):
+        return 2
+
     score = 5
 
-    if len(text) > 100:
+    words = text.split()
+    word_count = len(words)
+
+    # ───────────────── RESPONSE LENGTH
+    if word_count < 25:
+        score -= 2
+
+    elif word_count < 50:
+        score -= 1
+
+    elif 80 <= word_count <= 220:
         score += 1
-    if len(text) > 200:
+
+    # ───────────────── STRUCTURE
+    structure_keywords = [
+        "summary",
+        "example",
+        "steps",
+        "conclusion",
+        "subject",
+        "regards",
+    ]
+
+    structure_hits = sum(
+        1 for k in structure_keywords
+        if k in lower
+    )
+
+    if structure_hits >= 2:
         score += 1
+
+    # ───────────────── FORMAT QUALITY
     if "\n" in text:
-        score += 1
-    if any(word in text.lower() for word in ["dear", "regards", "subject"]):
-        score += 1
-    if len(text.split()) > 80:
-        score += 1
+        score += 0.5
 
-    return min(score, 10)
+    if ":" in text:
+        score += 0.5
 
-def get_real_llm_responses(prompt: str):
-    from engine.llm_mock import generate_mock_responses
+    # ───────────────── PROMPT RELEVANCE
+    if prompt:
 
-    status = _check_status()
-    mock_responses = generate_mock_responses(prompt)
+        prompt_words = [
+            w.lower()
+            for w in prompt.split()
+            if len(w) > 4
+        ]
+
+        response_words = lower.split()
+
+        overlap = sum(
+            1 for w in prompt_words
+            if w in response_words
+        )
+
+        relevance_ratio = overlap / max(len(prompt_words), 1)
+
+        if relevance_ratio > 0.7:
+            score += 1
+
+        elif relevance_ratio < 0.3:
+            score -= 2
+
+    # ───────────────── REPETITION CHECK
+    unique_ratio = len(set(words)) / max(word_count, 1)
+
+    if unique_ratio < 0.45:
+        score -= 2
+
+    elif unique_ratio < 0.6:
+        score -= 1
+
+    # ───────────────── GENERIC AI DETECTION
+    generic_phrases = [
+        "here is a detailed explanation",
+        "it is important to note",
+        "various aspects",
+        "in conclusion",
+        "this can be useful",
+    ]
+
+    generic_hits = sum(
+        1 for p in generic_phrases
+        if p in lower
+    )
+
+    if generic_hits >= 2:
+        score -= 1
+
+    # ───────────────── OVERLY VERBOSE
+    if word_count > 400:
+        score -= 1
+
+    return max(1, min(round(score), 10))
+
+# ─────────────────────────────────────────────
+# MODEL COMPARISON
+# ─────────────────────────────────────────────
+def get_real_llm_responses(prompt):
 
     results = {}
+
     callers = {
         "Groq": _call_groq,
         "Gemini": _call_gemini,
-        "HuggingFace": _call_huggingface,
+        "HuggingFace": _call_hf,
     }
 
-    # 🔹 Collect responses
-    for model_name, caller in callers.items():
-        if status[model_name] == "connected":
-            try:
-                text, ms = caller(prompt)
-                score = evaluate_response(text)
+    for name, func in callers.items():
 
-                results[model_name] = {
-                    "text": text,
-                    "latency_ms": ms,
-                    "score": score,
-                    "source": "real"
-                }
+        try:
+            text, latency = func(prompt)
 
-            except Exception as e:
-                results[model_name] = {
-                    "text": mock_responses[model_name],
-                    "latency_ms": 0,
-                    "score": 0,
-                    "source": "mock",
-                    "error": str(e)
-                }
-
-        else:
-            results[model_name] = {
-                "text": mock_responses[model_name],
-                "latency_ms": 0,
-                "score": 0,
-                "source": "mock",
-                "error": "API key not configured"
+            #score = evaluate_response(text)
+            score = evaluate_response(text, prompt)
+            
+            results[name] = {
+                "text": text,
+                "latency_ms": latency,
+                "score": score,
+                "source": "real"
             }
 
-    # 🔹 FIX: Correct Best Model Selection
-    def final_score(model):
-        score = results[model]["score"]
-        latency = results[model]["latency_ms"]
+        except Exception as e:
 
-        # Avoid division by zero
-        latency_factor = 1 / (latency + 1)
+            print(f"{name} ERROR:", e)
 
-        # 90% importance to quality, 10% to latency
-        return (score * 0.9) + (latency_factor * 10 * 0.1)
+            results[name] = {
+                "text": f"Error generating response: {str(e)}",
+                "latency_ms": 0,
+                "score": 2,
+                "source": "error",
+                "error": str(e)
+            }
+
+    # ─────────────────────────────────────────────
+    # SMART BEST MODEL SELECTION
+    # ─────────────────────────────────────────────
+
+    best_model = None
+    best_rank = -999
+
+    for model_name, item in results.items():
+
+        score = float(item.get("score", 0))
+        latency = item.get("latency_ms", 99999)
+
+        text = item.get("text", "").lower()
+
+        # strong penalty for failed/error responses
+        if "error" in text:
+            score -= 5
+
+        # VERY SMALL latency effect
+        latency_penalty = latency / 50000
+
+        final_rank = score - latency_penalty
+
+        if final_rank > best_rank:
+            best_rank = final_rank
+            best_model = model_name
+
+    return {
+        "results": results,
+        "best_model": best_model
+    }
