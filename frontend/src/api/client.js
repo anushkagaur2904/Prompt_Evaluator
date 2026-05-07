@@ -65,3 +65,12 @@ export const savePromptVersion = async (prompt, version) => {
   });
   return response.data;
 };
+
+export const deletePromptHistory = async (id) => {
+
+  const response = await axios.delete(
+    `${API_BASE_URL}/prompt-history/${id}`
+  );
+
+  return response.data;
+};

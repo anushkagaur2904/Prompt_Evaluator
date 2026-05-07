@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Sparkles, Terminal, ShieldAlert } from 'lucide-react';
 
 import InputBox from './components/InputBox';
@@ -19,7 +19,8 @@ import {
   abTestPrompts,
   submitFeedback,
   getPromptHistory,
-  savePromptVersion
+  savePromptVersion,
+  deletePromptHistory
 } from './api/client';
 
 function App() {
@@ -33,25 +34,25 @@ function App() {
   const [promptHistory, setPromptHistory] = useState([]);
 
   // 🌙 THEME
-  const [theme, setTheme] = useState("dark");
+  //const [theme, setTheme] = useState("dark");
 
-  useEffect(() => {
-    document.body.classList.remove("light", "dark");
-    document.body.classList.add(theme);
-  }, [theme]);
+  //useEffect(() => {
+  //  document.body.classList.remove("light", "dark");
+  //  document.body.classList.add(theme);
+  //}, [theme]);
 
-  useEffect(() => {
-    const saved = localStorage.getItem("theme");
-    if (saved) setTheme(saved);
-  }, []);
+  //useEffect(() => {
+  //  const saved = localStorage.getItem("theme");
+  //  if (saved) setTheme(saved);
+  //}, []);
 
-  useEffect(() => {
-    localStorage.setItem("theme", theme);
-  }, [theme]);
+  //useEffect(() => {
+  //  localStorage.setItem("theme", theme);
+  //}, [theme]);
 
-  const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
-  };
+  //const toggleTheme = () => {
+  //  setTheme(theme === "dark" ? "light" : "dark");
+  //};
 
   // 🎯 Prediction color helper
   const getPredictionColor = (label) => {
@@ -90,7 +91,13 @@ function App() {
 
       const history = await getPromptHistory(promptText);
       //setPromptHistory(history || []);
-      setPromptHistory(history.history || []);
+      //setPromptHistory(history.history || []);
+      setPromptHistory(
+        Array.isArray(history?.history)
+        ? history.history
+        : []
+      );
+
     } catch (error) {
       console.error(error);
       alert("Backend not running!");
@@ -138,28 +145,63 @@ function App() {
 
   const handleSaveVersion = async (promptText, version) => {
     try {
-      const result = await savePromptVersion(promptText, version);
+      
+      const result = await savePromptVersion(
+        promptText,
+        version
+      );
+
       if (result.success) {
-        const history = await getPromptHistory(promptText);
-        setPromptHistory(history || []);
+        
+        const historyResponse = await getPromptHistory(
+          promptText
+        );
+
+        setPromptHistory(
+          Array.isArray(historyResponse?.history)
+          ? historyResponse.history
+          : []
+        );
+
+        alert("Version saved successfully!");
       }
-    } catch {
+    } catch (error) {
+      console.error(error);
+
       alert("Save failed");
+    }
+  }
+
+  const handleDeleteHistory = async (id) => {
+    try {
+      const result = await deletePromptHistory(id);
+      
+      if (result.success) {
+        setPromptHistory(prev =>
+          prev.filter(item => item.id !== id)
+        );
+        
+        alert("Prompt deleted successfully!");
+      }
+    
+    } catch (error) {
+      console.error(error);
+      alert("Delete failed");
     }
   };
 
   // ---------------- UI ----------------
 
   return (
-    <div className="min-h-screen p-6 md:p-12 max-w-5xl mx-auto space-y-8">
-
+    <div className="min-h-screen p-6 md:p-12 max-w-5xl mx-auto space-y-8 bg-[var(--background)] text-[var(--foreground)]">
+    
       {/* HEADER */}
       <header className="flex flex-col md:flex-row items-center justify-between mb-12 gap-4">
 
         <div>
           <h1 className="text-3xl md:text-5xl font-black flex items-center gap-3">
             Prompt
-            <span className={theme === "dark" ? "gradient-text" : "light-gradient"}>
+            <span className="gradient-text">
               Evaluator
             </span>
             <Sparkles size={28} />
@@ -172,18 +214,6 @@ function App() {
 
         {/* Toggle + Status */}
         <div className="flex items-center gap-3">
-
-          <button
-            onClick={toggleTheme}
-            className="px-4 py-2 rounded-full text-sm border"
-            style={{
-              background: "var(--card)",
-              color: "var(--foreground)",
-              borderColor: "var(--border)"
-            }}
-          >
-            {theme === "dark" ? "☀️ Light" : "🌙 Dark"}
-          </button>
 
           <div
             className="rounded-full px-4 py-2 flex items-center gap-2 text-sm"
@@ -211,7 +241,9 @@ function App() {
         {loading && (
           <div className="py-20 flex flex-col items-center gap-4">
             <div className="w-12 h-12 border-4 border-blue-500 border-t-purple-500 rounded-full animate-spin"></div>
-            <p>Processing...</p>
+            <p className="text-[var(--muted-foreground)]">
+              Processing...
+            </p>
           </div>
         )}
 
@@ -245,7 +277,7 @@ function App() {
                         {label}
                       </div>
 
-                      <div className="text-sm text-gray-400">
+                      <div className="text-sm text-[var(--muted-foreground)]">
                         {confidence}%
                       </div>
                     </div>
@@ -288,10 +320,11 @@ function App() {
         {abResult && <ABComparisonPanel abResult={abResult} />}
 
         <PromptHistoryPanel
-          promptHistory={promptHistory}
-          onLoadVersion={(p) => handleAnalyze(p)}
-          onSaveVersion={handleSaveVersion}
-          currentPrompt={currentPrompt}
+        promptHistory={promptHistory}
+        onLoadVersion={(p) => handleAnalyze(p)}
+        onSaveVersion={handleSaveVersion}
+        onDeleteVersion={handleDeleteHistory}
+        currentPrompt={currentPrompt}
         />
 
       </div>

@@ -9,6 +9,12 @@ from engine.llm_api import (
     get_api_status
 )
 
+from db.database import (
+    save_prompt_version,
+    list_prompt_versions,
+    delete_prompt_version
+)
+
 router = APIRouter()
 
 
@@ -190,16 +196,94 @@ def ab_test(data: dict):
         )
     }
 
-# ───────────────── PROMPT HISTORY ─────────────────
-@router.get("/prompt-history")
-def get_prompt_history(prompt: str = ""):
+# ───────────────── FEEDBACK ─────────────────
+@router.post("/feedback")
+async def feedback(data: dict):
+
+    prompt = data.get("prompt", "")
+    feedback_type = data.get("feedback", "")
+    score = data.get("score", None)
+    comment = data.get("comment", "")
+
+    print("Feedback received:")
+    print({
+        "prompt": prompt,
+        "feedback": feedback_type,
+        "score": score,
+        "comment": comment
+    })
 
     return {
-        "history": [
-            {
-                "prompt": prompt,
-                "score": 7.8,
-                "timestamp": "2026-05-06 12:00"
-            }
-        ]
+        "success": True,
+        "message": "Feedback submitted successfully."
+    }
+
+# ───────────────── SAVE PROMPT HISTORY ─────────────────
+@router.post("/prompt-history")
+async def save_prompt_history(data: dict):
+
+    prompt = data.get("prompt", "")
+    version = data.get("version", "Unknown")
+
+    # analyze prompt to save score/metrics
+    analysis = analyze(prompt)
+
+    success = await save_prompt_version(
+        prompt=prompt,
+        version=version,
+        score=analysis["score"],
+        metrics=analysis["metrics"]
+    )
+
+    if success:
+
+        return {
+            "success": True,
+            "message": "Prompt history saved successfully."
+        }
+
+    return {
+        "success": False,
+        "message": "Failed to save prompt history."
+    }
+
+
+# ───────────────── GET PROMPT HISTORY ─────────────────
+@router.get("/prompt-history")
+async def get_prompt_history(prompt: str = ""):
+
+    history = await list_prompt_versions(prompt)
+
+    cleaned_history = []
+
+    for item in history:
+
+        cleaned_history.append({
+            "id": str(item.get("_id")),
+            "prompt": item.get("prompt"),
+            "version": item.get("version"),
+            "score": item.get("score"),
+            "timestamp": item.get("created_at")
+            })
+
+    return {
+        "history": cleaned_history
+    }
+
+# ───────────────── DELETE PROMPT HISTORY ─────────────────
+@router.delete("/prompt-history/{prompt_id}")
+async def delete_history(prompt_id: str):
+
+    success = await delete_prompt_version(prompt_id)
+
+    if success:
+
+        return {
+            "success": True,
+            "message": "Prompt deleted successfully."
+        }
+
+    return {
+        "success": False,
+        "message": "Failed to delete prompt."
     }

@@ -314,9 +314,7 @@ def detect_issues(prompt: str, scores: dict):
         )
 
     if not issues:
-        issues.append(
-            "Prompt is well-structured with good clarity."
-        )
+        return []
 
     return issues
 

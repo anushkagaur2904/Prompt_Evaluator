@@ -1,6 +1,7 @@
 import os
 import motor.motor_asyncio
 from datetime import datetime
+from bson import ObjectId
 
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
 client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URI)
@@ -102,3 +103,20 @@ async def list_feedback():
     except Exception as e:
         print(f"Failed to load feedback: {e}")
         return []
+    
+# ───────────────── DELETE PROMPT VERSION ─────────────────
+async def delete_prompt_version(prompt_id: str):
+
+    try:
+
+        result = await versions_collection.delete_one({
+            "_id": ObjectId(prompt_id)
+        })
+
+        return result.deleted_count > 0
+
+    except Exception as e:
+
+        print(f"Failed to delete prompt version: {e}")
+
+        return False
