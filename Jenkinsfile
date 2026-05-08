@@ -36,20 +36,22 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh '''
-                    sonar-scanner \
-                    -Dsonar.projectKey=prompt-evaluator \
-                    -Dsonar.sources=. \
-                    -Dsonar.host.url=http://host.docker.internal:9000 \
-                    -Dsonar.token=squ_c5acf21eedddd91d642e7ec4478af9dc6d387b0b
-                    '''
-                }
+    steps {
+        script {
+            def scannerHome = tool 'SonarScanner'
+
+            withSonarQubeEnv('SonarQube') {
+                sh """
+                ${scannerHome}/bin/sonar-scanner \
+                -Dsonar.projectKey=prompt-evaluator \
+                -Dsonar.sources=. \
+                -Dsonar.host.url=http://host.docker.internal:9000 \
+                -Dsonar.token=squ_c5acf21eedddd91d642e7ec4478af9dc6d387b0b
+                """
             }
         }
-
     }
+}
 
     post {
 
