@@ -1,156 +1,335 @@
 # Prompt Evaluation & Experimentation System
 
-## Quick Start
-Start the backend and frontend locally with these commands:
+A full-stack AI Prompt Evaluation and Experimentation platform with DevOps integration using FastAPI, React/Vite, MongoDB, Docker, Jenkins, and SonarQube.
 
-```bash
-cd backend
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
+---
 
-In another terminal:
+# 📌 Project Overview
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+This repository implements a practical Prompt Evaluation and Experimentation System designed to evaluate, compare, optimize, and track prompts using deterministic metrics and multi-model analysis.
 
-Then open the frontend at `http://localhost:5173` and backend at `http://localhost:8000`.
+The project also integrates modern DevOps practices including:
+- Continuous Integration (CI)
+- Static Code Analysis
+- Containerization
+- Multi-container Deployment
 
-## 1. 🎯 Executive Summary
-This repository implements a practical prompt evaluation and experimentation system with a FastAPI backend and a React frontend.
+---
 
-The platform evaluates prompt quality using deterministic metrics, compares outputs across models, supports A/B prompt testing, stores prompt versions, and captures user feedback.
+# 🎯 Executive Summary
 
-## 2. 🧠 What the System Does
+The platform evaluates prompt quality using deterministic scoring metrics, compares outputs across models, supports A/B prompt testing, stores prompt versions, and captures user feedback.
+
+It provides an end-to-end workflow for prompt engineering experimentation and quality monitoring.
+
+---
+
+# 🧠 What the System Does
+
 The system provides:
-* Prompt evaluation with deterministic scoring
-* Prompt optimization suggestions
-* Multi-model response comparison
-* A/B prompt testing
-* Prompt history and version tracking
-* Feedback capture for prompt results
-* Prompt injection detection and regression alerts
 
-## 3. 🚀 Key Features
+- Prompt evaluation with deterministic scoring
+- Prompt optimization suggestions
+- Multi-model response comparison
+- A/B prompt testing
+- Prompt history and version tracking
+- Feedback capture for prompt results
+- Prompt injection detection
+- Regression alerts for prompt quality changes
 
-### 🔹 Deterministic Prompt Metrics
-* Keyword relevance matching
-* Format validation (bullet / JSON)
-* Conciseness checks
-* Clarity, specificity, context, instruction, and ambiguity scoring
+---
 
-### 🔹 A/B Prompt Comparison
-* Compare Prompt A vs Prompt B
-* Side-by-side metric view
-* Winner recommendation and regression indicator
+# 🚀 Key Features
 
-### 🔹 Multi-Model Output Comparison
-* Compare Groq, Gemini, and HuggingFace outputs
-* Latency and score summary
-* Best model recommendation
+## 🔹 Deterministic Prompt Metrics
 
-### 🔹 Prompt Versioning & History
-* Save prompt versions
-* Load previous prompt revisions
-* Support regression tracking
+- Keyword relevance matching
+- Format validation (Bullet / JSON)
+- Conciseness checks
+- Clarity scoring
+- Specificity scoring
+- Context scoring
+- Instruction scoring
+- Ambiguity scoring
 
-### 🔹 Feedback Capture
-* Thumbs-up / thumbs-down feedback
-* Comment capture for prompt quality
-* Stored in the backend for future analysis
+---
 
-### 🔹 Security Guardrails
-* Prompt injection detection
-* Safe fallback to mock model responses when API keys are missing
+## 🔹 A/B Prompt Comparison
 
-## 4. 🧩 Architecture
-* **Backend:** FastAPI, deterministic prompt evaluation, MongoDB storage helpers
-* **Frontend:** React, Vite, modern UI components
-* **Database:** MongoDB (via Motor)
-* **DevOps:** Docker support and Jenkins pipeline
+- Compare Prompt A vs Prompt B
+- Side-by-side metric comparison
+- Winner recommendation
+- Regression detection
 
-## 5. 🔧 Setup Instructions
+---
 
-### Local Backend
+## 🔹 Multi-Model Output Comparison
+
+Supports comparison between:
+- Groq
+- Gemini
+- HuggingFace
+
+Includes:
+- Latency comparison
+- Response quality scoring
+- Best model recommendation
+
+---
+
+## 🔹 Prompt Versioning & History
+
+- Save prompt versions
+- Load previous prompt revisions
+- Track prompt improvements
+- Support regression monitoring
+
+---
+
+## 🔹 Feedback Capture
+
+- Thumbs-up / thumbs-down feedback
+- User comments for prompt quality
+- Backend storage for analysis
+
+---
+
+## 🔹 Security Guardrails
+
+- Prompt injection detection
+- Safe fallback to mock model responses when API keys are unavailable
+
+---
+
+# 🧩 System Architecture
+
+## Backend
+- FastAPI
+- Deterministic prompt evaluation engine
+- MongoDB integration using Motor
+
+## Frontend
+- React
+- Vite
+- Modern UI components
+- Nginx production deployment
+
+## Database
+- MongoDB
+
+## DevOps Stack
+- Docker
+- Docker Compose
+- Jenkins
+- SonarQube
+- GitHub
+
+---
+
+# 📂 Project Structure
+
 ```bash
+Prompt_Evaluator/
+│
+├── backend/
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   ├── .env
+│   └── ...
+│
+├── frontend/
+│   ├── Dockerfile
+│   ├── nginx.conf
+│   └── ...
+│
+├── docker-compose.yml
+├── Jenkinsfile
+└── README.md
+
+⚙️ Local Setup Instructions
+
+Backend Setup
 cd backend
+
 python3 -m venv venv
+
 source venv/bin/activate
+
 pip install -r requirements.txt
+
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
+Frontend Setup
 
-### Local Frontend
-```bash
+Open another terminal:
+
 cd frontend
-npm install
-npm run dev
-```
 
-### Environment Variables
-Copy the backend example env file and add your API keys:
-```bash
+npm install
+
+npm run dev
+
+🌐 Local URLs
+
+Frontend
+http://localhost:5173
+
+Backend
+http://localhost:8000
+
+Swagger API Docs
+http://localhost:8000/docs
+
+🔐 Environment Variables
+
+Copy the backend example environment file:
+
 cd backend
+
 cp .env.example .env
-```
-Edit `.env` with your keys:
-```env
+
+Add your API keys:
+
 GROQ_API_KEY=your_groq_key
 GOOGLE_API_KEY=your_gemini_key
 HUGGINGFACE_API_KEY=your_huggingface_key
-```
-If API keys are missing, the backend uses safe mock responses.
 
-### Run with Docker Compose
-```bash
-docker-compose up -d
-```
+If API keys are missing, the backend automatically uses safe mock responses.
 
-### Build Docker Images
-```bash
+🐳 Docker Setup
+
+Backend Docker
+
+The backend is containerized using:
+
+Python 3.9 Slim
+FastAPI
+Uvicorn
+Frontend Docker
+
+The frontend uses:
+
+Multi-stage Docker builds
+Node.js for build stage
+Nginx for production deployment
+
+🐳 Docker Compose Setup
+
+Docker Compose orchestrates:
+
+Backend container
+Frontend container
+MongoDB container
+
+Run Entire Application
+docker compose up --build
+
+Stop Containers
+docker compose down
+
+🐳 Build Docker Images Manually
+
+Backend
 docker build -t prompt-backend:latest ./backend
+
+Frontend
 docker build -t prompt-frontend:latest ./frontend
-```
 
-### Jenkins Pipeline
-The repo includes a Jenkinsfile that:
-* installs backend and frontend dependencies
-* builds Docker images
-* runs containers locally for verification
-* checks service health on `http://localhost:8000` and `http://localhost:3000`
+🔄 Jenkins CI Pipeline
 
-## 6. 📍 Important Endpoints
-* `POST /api/analyze` – prompt evaluation
-* `POST /api/optimize` – prompt optimization
-* `POST /api/compare` – multi-model comparison
-* `POST /api/ab-test` – A/B comparison
-* `POST /api/feedback` – submit feedback
-* `GET /api/prompt-history` – fetch prompt versions
-* `POST /api/prompt-history` – save prompt version
-* `POST /api/dataset` – add golden dataset entry
+The repository includes a Jenkins pipeline for Continuous Integration.
+Pipeline Stages
+Checkout source code from GitHub
+Backend validation
+Frontend build
+SonarQube static code analysis
 
-## 7. 🧪 What’s New
-* deterministic prompt metrics added
-* regression detection on prompt scores
-* A/B prompt comparison feature
-* prompt version history and save/load support
-* user feedback buttons and storage
-* updated Docker and Jenkins support for the current repo
+📊 SonarQube Integration
 
-## 8. 🧠 Current Status
-* ✅ Backend available on `http://localhost:8000`
-* ✅ Frontend build passes with Vite
-* ✅ New UI components for A/B testing and prompt history
-* ✅ Feedback capture is implemented
-* ✅ Jenkins pipeline updated for frontend port mapping
+SonarQube is integrated for:
+Code quality analysis
+Bug detection
+Vulnerability detection
+Code smell detection
+Maintainability analysis
 
-## 9. 📌 Next Steps
-* Add prompt dataset management UI
-* Add regression visualization and trend tracking
-* Extend storage with analytics dashboards
-* Add more robust unit/integration tests
+🌐 DevOps Service URLs
+
+Jenkins Dashboard
+http://localhost:8080
+
+SonarQube Dashboard
+http://localhost:9000
+
+📍 Important API Endpoints
+
+Method	Endpoint	Description
+POST	/api/analyze	Prompt evaluation
+POST	/api/optimize	Prompt optimization
+POST	/api/compare	Multi-model comparison
+POST	/api/ab-test	A/B prompt testing
+POST	/api/feedback	Submit user feedback
+GET	/api/prompt-history	Fetch prompt versions
+POST	/api/prompt-history	Save prompt version
+POST	/api/dataset	Add golden dataset entry
+
+📈 DevOps Workflow
+
+GitHub
+   ↓
+Jenkins CI Pipeline
+   ↓
+Backend Validation
+   ↓
+Frontend Build
+   ↓
+SonarQube Analysis
+   ↓
+Docker Compose Deployment
+
+🧪 What's New
+
+Deterministic prompt metrics added
+Regression detection support
+A/B prompt testing feature
+Prompt version history support
+User feedback capture
+Docker containerization
+Docker Compose deployment
+Jenkins CI pipeline integration
+SonarQube static analysis integration
+Nginx frontend deployment
+
+🧠 Current Status
+
+✅ Backend available on http://localhost:8000
+✅ Frontend available on http://localhost:3000
+✅ Docker Compose deployment working
+✅ MongoDB integration working
+✅ Jenkins pipeline configured
+✅ SonarQube analysis configured
+✅ Frontend production build working with Nginx
+✅ Prompt history and feedback system implemented
+
+📚 Learning Outcomes
+
+This project demonstrates:
+
+Full-stack application development
+Prompt engineering experimentation
+CI/CD pipeline implementation
+Docker containerization
+Multi-container orchestration
+Static code analysis
+DevOps workflow integration
+
+📌 Future Improvements
+
+Prompt dataset management dashboard
+Regression trend visualization
+Analytics dashboards
+Unit and integration testing
+Automated deployment pipeline
+Kubernetes integration
+Monitoring and logging tools
+Cloud deployment support
+
