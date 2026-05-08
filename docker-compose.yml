@@ -1,31 +1,46 @@
-version: '3.8'
+version: "3.8"
 
 services:
   backend:
-    image: anushkagaur2904/prompt_evaluator_backend
+    build: ./backend
+
+    container_name: prompt-backend
+
     ports:
       - "8000:8000"
+
     environment:
       - PORT=8000
       - MONGO_URI=mongodb://mongodb:27017
+
     depends_on:
       - mongodb
+
     networks:
       - prompt-eval-network
 
   mongodb:
     image: mongo:latest
+
+    container_name: mongodb
+
     ports:
       - "27017:27017"
+
     networks:
       - prompt-eval-network
 
   frontend:
-    image: anushkagaur2904/prompt_evaluator_frontend
+    build: ./frontend
+
+    container_name: prompt-frontend
+
     ports:
-      - "80:80"
+      - "3000:80"
+
     depends_on:
       - backend
+
     networks:
       - prompt-eval-network
 
